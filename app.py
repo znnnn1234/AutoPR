@@ -19,6 +19,8 @@ import base64
 import mimetypes
 import re
 
+YOLO_MODEL_PATH = "DocLayout-YOLO-DocStructBench/doclayout_yolo_docstructbench_imgsz1024.pt"
+
 FORMAT_PROMPT_TEMPLATE = '''
 You are an expert in structuring social media content. Your task is to convert a post written in Markdown format into a structured JSON format. The JSON structure depends on the target platform.
 
@@ -66,6 +68,40 @@ Convert the content into a single JSON object for a Xiaohongshu post.
 }}
 '''
 
+TWITTER_INSTRUCTIONS_CHINESE = '''
+将内容转换为表示Twitter线程的JSON数组。数组中的每个元素都是一条推文对象。
+- 每条推文对象必须有一个"text"键。文本应该是纯文本，不包含任何Markdown格式（如`*`、`#`、`[]()` 等）
+- 如果推文关联有图片，添加"image_index"键，值为提供的Asset list中对应的从零开始的索引。例如，如果使用了第一张图`![...](img_0.png)`，其索引为0。
+- 确保逻辑流畅连贯。如有必要，将文本分成多条推文。
+
+**Asset list（仅供参考）：**
+{asset_list}
+
+**JSON输出格式：**
+[
+  {{ "text": "第一条推文的文本", "image_index": 0 }},
+  {{ "text": "第二条推文的文本" }},
+  {{ "text": "第三条推文的文本", "image_index": 1 }}
+]
+'''
+
+XIAOHONGSHU_INSTRUCTIONS_CHINESE = '''
+将内容转换为小红书帖子的单个JSON对象。
+- JSON对象必须有"title"键。从Markdown中提取主标题（通常是第一个H1/H2标题）。标题应该是纯文本。
+- JSON对象必须有"body"键，包含主要文本内容和表情符号。正文应该是纯文本，不包含任何Markdown格式（如`*`、`#`、`[]()` 等）
+- JSON对象必须有"image_indices"键，值为一个数组，包含帖子中使用的所有图片索引，按出现顺序排列。
+
+**Asset list（仅供参考）：**
+{asset_list}
+
+**JSON输出格式：**
+{{
+  "title": "你的吸引人的标题",
+  "body": "帖子的完整正文内容...",
+  "image_indices": [0, 1, 2, 3]
+}}
+'''
+
 def image_to_base64(path: str) -> str:
 
     try:
@@ -97,12 +133,13 @@ async def format_post_for_display(
     assets: Optional[List[Dict]],
     platform: str,
     client,
-    model: str
+    model: str,
+    language: str = 'en'
 ) -> Optional[Dict]:
     if platform == 'twitter':
-        instructions = TWITTER_INSTRUCTIONS
+        instructions = TWITTER_INSTRUCTIONS_CHINESE if language == 'zh' else TWITTER_INSTRUCTIONS
     elif platform == 'xiaohongshu':
-        instructions = XIAOHONGSHU_INSTRUCTIONS
+        instructions = XIAOHONGSHU_INSTRUCTIONS_CHINESE if language == 'zh' else XIAOHONGSHU_INSTRUCTIONS
     else:
         return None
 
@@ -230,7 +267,7 @@ async def process_pdf(
         progress(0.3, desc="Step 2/5: Extracting figures from PDF...")
         extraction_work_dir = work_dir / "figure_extraction"
         extraction_work_dir.mkdir()
-        paired_dir = await run_figure_extraction(str(pdf_path), str(extraction_work_dir), progress=progress)
+        paired_dir = run_figure_extraction(str(pdf_path), str(extraction_work_dir), YOLO_MODEL_PATH)
         if not paired_dir or not any(Path(paired_dir).iterdir()):
             raise gr.Error("Failed to extract any figures from the PDF.")
 
@@ -243,7 +280,17 @@ async def process_pdf(
             language=language
         )
         if not blog_draft or blog_draft.startswith("Error:"):
-            raise gr.Error(f"Failed to generate blog draft: {blog_draft}")
+            # Extract meaningful error message
+            error_msg = blog_draft if blog_draft else "Unknown error"
+            if "502 Bad Gateway" in error_msg:
+                raise gr.Error("API service is temporarily unavailable (502 Bad Gateway). Please check if your API endpoint is working correctly and try again later.")
+            elif "API client configuration failed" in error_msg:
+                raise gr.Error("API client configuration failed. Please verify your API key and base URL are correct.")
+            else:
+                # Truncate very long error messages (like HTML responses)
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "... (error message truncated)"
+                raise gr.Error(f"Failed to generate blog draft: {error_msg}")
         
         progress(0.7, desc="Step 4/5: Generating final post with vision analysis...")
         final_post_md, assets_info = await generate_final_post(
@@ -261,7 +308,14 @@ async def process_pdf(
             post_format='rich'
         )
         if not final_post_md or final_post_md.startswith("Error:"):
-            raise gr.Error(f"Failed to generate final post: {final_post_md}")
+            error_msg = final_post_md if final_post_md else "Unknown error"
+            if "502 Bad Gateway" in error_msg:
+                raise gr.Error("Vision API service is temporarily unavailable (502 Bad Gateway). Please try again later.")
+            else:
+                # Truncate very long error messages
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "... (error message truncated)"
+                raise gr.Error(f"Failed to generate final post: {error_msg}")
 
         post_content_dir = work_dir / "post"
         post_content_dir.mkdir()
@@ -279,7 +333,7 @@ async def process_pdf(
         progress(0.9, desc="Step 5/5: Formatting for rich display...")
         async with setup_client(text_api_key, base_url) as client:
             structured_data = await format_post_for_display(
-                final_post_md, assets_info, platform, client, text_model
+                final_post_md, assets_info, platform, client, text_model, language
             )
         if not structured_data:
             raise gr.Error("Failed to format post for display.")

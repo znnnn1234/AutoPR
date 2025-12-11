@@ -18,7 +18,7 @@ def _prepare_extra_body(model_name: str, disable_qwen_thinking: bool) -> Optiona
 async def setup_client(api_key: str, base_url: str) -> AsyncIterator[AsyncOpenAI]:
     """Use an asynchronous context manager to create and properly destroy the API client."""
     client = None
-    if not api_key or "sk-" not in api_key:
+    if not api_key :
         tqdm.write("[!] Error: API Key is invalid or not set.")
         yield None
         return
@@ -60,7 +60,20 @@ async def call_text_llm_api(local_client: AsyncOpenAI, system_prompt: str, user_
         )
         return completion.choices[0].message.content
     except Exception as e:
-                return f"Error: Text API call failed - {e}"
+        error_str = str(e)
+        tqdm.write(f"[!] API Error: {error_str}")
+        # Return cleaner error message
+        if "502" in error_str or "Bad Gateway" in error_str:
+            return "Error: API service returned 502 Bad Gateway. The API endpoint may be temporarily unavailable."
+        elif "401" in error_str or "Unauthorized" in error_str:
+            return "Error: API authentication failed. Please check your API key."
+        elif "429" in error_str or "rate" in error_str.lower():
+            return "Error: API rate limit exceeded. Please wait a moment and try again."
+        else:
+            # Truncate very long error messages
+            if len(error_str) > 200:
+                error_str = error_str[:200] + "..."
+            return f"Error: Text API call failed - {error_str}"
 
 async def call_multimodal_llm_api(local_client: AsyncOpenAI, system_prompt: str, user_prompt_parts: list, model: str, disable_qwen_thinking: bool = False) -> str:
 
@@ -79,7 +92,20 @@ async def call_multimodal_llm_api(local_client: AsyncOpenAI, system_prompt: str,
         )
         return completion.choices[0].message.content
     except Exception as e:
-        return f"Error: Multimodal API call failed - {e}"
+        error_str = str(e)
+        tqdm.write(f"[!] Vision API Error: {error_str}")
+        # Return cleaner error message
+        if "502" in error_str or "Bad Gateway" in error_str:
+            return "Error: Vision API service returned 502 Bad Gateway. The API endpoint may be temporarily unavailable."
+        elif "401" in error_str or "Unauthorized" in error_str:
+            return "Error: Vision API authentication failed. Please check your API key."
+        elif "429" in error_str or "rate" in error_str.lower():
+            return "Error: Vision API rate limit exceeded. Please wait a moment and try again."
+        else:
+            # Truncate very long error messages
+            if len(error_str) > 200:
+                error_str = error_str[:200] + "..."
+            return f"Error: Multimodal API call failed - {error_str}"
 
 class BlogGeneratorAgent:
 
