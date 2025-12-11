@@ -280,17 +280,7 @@ async def process_pdf(
             language=language
         )
         if not blog_draft or blog_draft.startswith("Error:"):
-            # Extract meaningful error message
-            error_msg = blog_draft if blog_draft else "Unknown error"
-            if "502 Bad Gateway" in error_msg:
-                raise gr.Error("API service is temporarily unavailable (502 Bad Gateway). Please check if your API endpoint is working correctly and try again later.")
-            elif "API client configuration failed" in error_msg:
-                raise gr.Error("API client configuration failed. Please verify your API key and base URL are correct.")
-            else:
-                # Truncate very long error messages (like HTML responses)
-                if len(error_msg) > 200:
-                    error_msg = error_msg[:200] + "... (error message truncated)"
-                raise gr.Error(f"Failed to generate blog draft: {error_msg}")
+            raise gr.Error(f"Failed to generate blog draft: {blog_draft}")
         
         progress(0.7, desc="Step 4/5: Generating final post with vision analysis...")
         final_post_md, assets_info = await generate_final_post(
@@ -308,14 +298,7 @@ async def process_pdf(
             post_format='rich'
         )
         if not final_post_md or final_post_md.startswith("Error:"):
-            error_msg = final_post_md if final_post_md else "Unknown error"
-            if "502 Bad Gateway" in error_msg:
-                raise gr.Error("Vision API service is temporarily unavailable (502 Bad Gateway). Please try again later.")
-            else:
-                # Truncate very long error messages
-                if len(error_msg) > 200:
-                    error_msg = error_msg[:200] + "... (error message truncated)"
-                raise gr.Error(f"Failed to generate final post: {error_msg}")
+            raise gr.Error(f"Failed to generate final post: {final_post_md}")
 
         post_content_dir = work_dir / "post"
         post_content_dir.mkdir()

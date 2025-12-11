@@ -122,7 +122,7 @@ You also need to download the [DocLayout-YOLO](https://huggingface.co/juliozhao/
 After generation, use the evaluation script to assess the quality of the posts in your output directory.
 
 ```bash
-chmod +x scripts/run_eval.sh
+chmod +x script/run_eval.sh
 ./scripts/run_eval.sh
 ```
 
@@ -131,8 +131,8 @@ chmod +x scripts/run_eval.sh
 Finally, run the calculation script to aggregate the raw evaluation data into a formatted results table.
 
 ```bash
-chmod +x scripts/calc_results.sh
-./scripts/calc_results.sh
+chmod +x script/calc_results.sh
+./script/calc_results.sh
 ```
 
 ## 🕹️ 6. PRAgent Generation
@@ -170,7 +170,7 @@ If you have run ``download_and_reconstruct.py``, you can use the ``papers`` fold
 
 Next, configure and run the generation script.
 ```bash
-chmod +x scripts/run_pragent.sh
+chmod +x script/run_generation.sh
 ./script/run_generation.sh
 ```
 

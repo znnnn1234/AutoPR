@@ -60,20 +60,7 @@ async def call_text_llm_api(local_client: AsyncOpenAI, system_prompt: str, user_
         )
         return completion.choices[0].message.content
     except Exception as e:
-        error_str = str(e)
-        tqdm.write(f"[!] API Error: {error_str}")
-        # Return cleaner error message
-        if "502" in error_str or "Bad Gateway" in error_str:
-            return "Error: API service returned 502 Bad Gateway. The API endpoint may be temporarily unavailable."
-        elif "401" in error_str or "Unauthorized" in error_str:
-            return "Error: API authentication failed. Please check your API key."
-        elif "429" in error_str or "rate" in error_str.lower():
-            return "Error: API rate limit exceeded. Please wait a moment and try again."
-        else:
-            # Truncate very long error messages
-            if len(error_str) > 200:
-                error_str = error_str[:200] + "..."
-            return f"Error: Text API call failed - {error_str}"
+                return f"Error: Text API call failed - {e}"
 
 async def call_multimodal_llm_api(local_client: AsyncOpenAI, system_prompt: str, user_prompt_parts: list, model: str, disable_qwen_thinking: bool = False) -> str:
 
@@ -92,20 +79,7 @@ async def call_multimodal_llm_api(local_client: AsyncOpenAI, system_prompt: str,
         )
         return completion.choices[0].message.content
     except Exception as e:
-        error_str = str(e)
-        tqdm.write(f"[!] Vision API Error: {error_str}")
-        # Return cleaner error message
-        if "502" in error_str or "Bad Gateway" in error_str:
-            return "Error: Vision API service returned 502 Bad Gateway. The API endpoint may be temporarily unavailable."
-        elif "401" in error_str or "Unauthorized" in error_str:
-            return "Error: Vision API authentication failed. Please check your API key."
-        elif "429" in error_str or "rate" in error_str.lower():
-            return "Error: Vision API rate limit exceeded. Please wait a moment and try again."
-        else:
-            # Truncate very long error messages
-            if len(error_str) > 200:
-                error_str = error_str[:200] + "..."
-            return f"Error: Multimodal API call failed - {error_str}"
+        return f"Error: Multimodal API call failed - {e}"
 
 class BlogGeneratorAgent:
 
