@@ -7,7 +7,11 @@ from pragent.backend.loader import ImagePDFLoader
 from pragent.backend.yolo import extract_and_save_layout_components
 from tqdm.asyncio import tqdm
 
-def run_figure_extraction(pdf_path: str, base_work_dir: str, model_path: str) -> str:
+import asyncio
+from typing import Optional, Callable
+
+async def run_figure_extraction(pdf_path: str, base_work_dir: str, model_path: Optional[str] = None, progress: Optional[Callable] = None, conf_threshold: float = 0.8) -> str:
+#def run_figure_extraction(pdf_path: str, base_work_dir: str, model_path: str) -> str:
     """
     A complete workflow for extracting and pairing charts from a PDF.
     This is the main function called by app.py.
@@ -16,7 +20,9 @@ def run_figure_extraction(pdf_path: str, base_work_dir: str, model_path: str) ->
         pdf_path (str): The path to the PDF uploaded by the user.
         base_work_dir (str): The temporary working directory for this session.
         model_path (str): The path to the YOLO model for document layout analysis.
-
+        progress (Optional[Callable]): A progress callback function.
+        conf_threshold (float): The confidence threshold for YOLO model detection (default: 0.8).
+    
     Returns:
         str: The directory path of the final pairing result, or None if it fails.
     """

@@ -267,7 +267,7 @@ async def process_pdf(
         progress(0.3, desc="Step 2/5: Extracting figures from PDF...")
         extraction_work_dir = work_dir / "figure_extraction"
         extraction_work_dir.mkdir()
-        paired_dir = run_figure_extraction(str(pdf_path), str(extraction_work_dir), YOLO_MODEL_PATH)
+        paired_dir = await run_figure_extraction(str(pdf_path), str(extraction_work_dir), model_path=YOLO_MODEL_PATH, progress=progress)
         if not paired_dir or not any(Path(paired_dir).iterdir()):
             raise gr.Error("Failed to extract any figures from the PDF.")
 
